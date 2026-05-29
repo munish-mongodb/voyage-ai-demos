@@ -1,0 +1,25 @@
+# API keys — never commit
+.env
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Claude Code local config
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Downloaded at runtime — no need to track
+/tmp/

@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voyage AI — MRL &amp; MoE Architecture</title>
+<style>
+:root {
+  --color-background-primary:   #FFFFFF;
+  --color-background-secondary: #F5F5F2;
+  --color-background-tertiary:  #EEEDE9;
+  --color-text-primary:         #1A1915;
+  --color-text-secondary:       #6B6A65;
+  --color-text-tertiary:        #9B9A96;
+  --color-border-primary:       #D4D3CE;
+  --color-border-secondary:     #E2E1DC;
+  --color-border-tertiary:      #EDECEA;
+  --border-radius-sm:  4px;
+  --border-radius-md:  8px;
+  --border-radius-lg:  12px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* ── Header ── */
+.header {
+  padding: 18px 32px 0;
+  border-bottom: 1px solid var(--color-border-secondary);
+  background: var(--color-background-primary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.header-wordmark {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin-bottom: 4px;
+}
+
+.header-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.header-sub {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-weight: 500;
+  background: #E1F5EE;
+  color: #085041;
+  border: 0.5px solid #B6E8D6;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: 0;
+}
+
+.tab {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  transition: all .15s;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--color-text-primary); }
+
+.tab.active {
+  color: var(--color-text-primary);
+  border-bottom-color: #1D9E75;
+}
+
+/* ── Layout ── */
+.content {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 32px 56px;
+}
+
+.section { display: none; }
+.section.active { display: block; }
+
+.section-intro { margin-bottom: 20px; }
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  max-width: 680px;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 12px;
+}
+
+.card-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 10px;
+}
+
+.lever-note {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-top: 7px;
+  line-height: 1.5;
+}
+
+/* ── Model buttons ── */
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.model-btn {
+  padding: 8px 4px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+}
+
+.model-btn .name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); display: block; }
+.model-btn .sub  { font-size: 11px; color: var(--color-text-secondary); display: block; margin-top: 2px; }
+
+.model-btn.active { border: 2px solid #1D9E75; background: #E1F5EE; }
+.model-btn.active .name { color: #085041; }
+.model-btn.active .sub  { color: #0F6E56; }
+
+/* ── Dim buttons ── */
+.dim-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.dim-btn {
+  padding: 8px 4px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.dim-btn.active { border: 2px solid #534AB7; background: #EEEDFE; color: #3C3489; }
+
+/* ── Quant buttons ── */
+.quant-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.quant-btn {
+  padding: 8px 4px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+}
+
+.quant-btn .name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); display: block; }
+.quant-btn .sub  { font-size: 11px; color: var(--color-text-secondary); display: block; margin-top: 2px; }
+
+.quant-btn.active { border: 2px solid #BA7517; background: #FAEEDA; }
+.quant-btn.active .name { color: #633806; }
+.quant-btn.active .sub  { color: #854F0B; }
+
+/* ── Result metrics ── */
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.metric {
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-md);
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.metric-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.metric-val   { font-size: 22px; font-weight: 500; color: var(--color-text-primary); line-height: 1.2; }
+.metric-unit  { font-size: 11px; color: var(--color-text-secondary); }
+
+/* ── Bars ── */
+.bar-row { margin: 8px 0; }
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.bar-track {
+  height: 8px;
+  background: var(--color-background-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .35s ease, background .35s ease;
+}
+
+/* ── Insight box ── */
+.insight {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius-md);
+  border: 0.5px solid var(--color-border-tertiary);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.insight b { color: var(--color-text-primary); font-weight: 500; }
+
+/* ── Code snippet ── */
+.code-block {
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  padding: 12px 14px;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--color-text-primary);
+  line-height: 1.7;
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.code-block .cm  { color: var(--color-text-tertiary); }   /* comment */
+.code-block .kw  { color: #534AB7; font-weight: 500; }    /* keyword */
+.code-block .fn  { color: #1D9E75; }                      /* function */
+.code-block .st  { color: #BA7517; }                      /* string */
+.code-block .hi  { background: #EEEDFE; border-radius: 3px; padding: 0 3px; } /* highlight */
+
+/* ── Quality reference table ── */
+.qtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.qtable th {
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-secondary);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.qtable td {
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  vertical-align: middle;
+  color: var(--color-text-secondary);
+}
+
+.qtable td:first-child { color: var(--color-text-primary); font-weight: 500; }
+
+.qtable tr.q-active td { background: #EEEDFE; }
+.qtable tr.q-active td:first-child { color: #3C3489; }
+
+.q-bar-wrap { display: flex; align-items: center; gap: 6px; }
+
+.q-bar-track {
+  width: 100px;
+  height: 6px;
+  background: var(--color-background-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.q-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+
+/* ── MoE ── */
+.input-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+
+.input-btn {
+  padding: 7px 13px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  transition: all .15s;
+  white-space: nowrap;
+}
+
+.input-btn.active {
+  border: 2px solid #534AB7;
+  background: #EEEDFE;
+  color: #3C3489;
+  font-weight: 500;
+}
+
+.router-box {
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: 12px 16px;
+  margin: 12px 0;
+}
+
+.router-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.router-decision {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  min-height: 20px;
+  margin-bottom: 10px;
+}
+
+.score-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.score-label { font-size: 11px; color: var(--color-text-secondary); min-width: 120px; text-align: right; }
+.score-track { flex: 1; height: 6px; background: var(--color-background-primary); border-radius: 3px; overflow: hidden; border: 0.5px solid var(--color-border-tertiary); }
+.score-fill  { height: 100%; border-radius: 3px; transition: width .4s ease; }
+.score-pct   { font-size: 11px; color: var(--color-text-secondary); min-width: 30px; }
+
+.expert-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+
+.expert-box {
+  border-radius: var(--border-radius-md);
+  border: 0.5px solid var(--color-border-tertiary);
+  padding: 10px 10px;
+  text-align: center;
+  transition: all .3s;
+  background: var(--color-background-secondary);
+}
+
+.expert-box.e-active  { border: 2px solid #1D9E75; background: #E1F5EE; }
+.expert-box.e-dormant { opacity: 0.3; }
+
+.expert-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
+.expert-sub  { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+
+.expert-box.e-active .expert-name { color: #085041; }
+.expert-box.e-active .expert-sub  { color: #0F6E56; }
+
+.stat-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+
+.stat { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px; text-align: center; }
+.stat-n { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+.stat-l { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+
+.dense-note {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+/* ── Decision tables ── */
+.dtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dtable th {
+  padding: 7px 10px;
+  background: var(--color-background-secondary);
+  border-bottom: 1px solid var(--color-border-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dtable td {
+  padding: 9px 10px;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  vertical-align: top;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.dtable td:first-child { font-weight: 500; color: var(--color-text-primary); white-space: nowrap; }
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tag-g { background: #E1F5EE; color: #085041; border: 0.5px solid #B6E8D6; }
+.tag-p { background: #EEEDFE; color: #3C3489; border: 0.5px solid #C6C3F4; }
+.tag-o { background: #FAEEDA; color: #633806; border: 0.5px solid #F0CC92; }
+
+.section-rule { border: none; border-top: 0.5px solid var(--color-border-secondary); margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-wordmark">Voyage AI</div>
+      <div class="header-title">MRL &amp; MoE — Architecture Explainer</div>
+      <div class="header-sub">Matryoshka dimensions · Mixture of Experts routing · Deployment decision guide · voyage-4 series</div>
+    </div>
+    <span class="badge">Technical Architects</span>
+  </div>
+  <div class="tabs">
+    <button class="tab active"  onclick="showTab('mrl')">MRL — Matryoshka Dims</button>
+    <button class="tab"         onclick="showTab('moe')">MoE — Expert Routing</button>
+    <button class="tab"         onclick="showTab('guide')">Deployment Guide</button>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ══════════════════════════════════════
+     TAB 1 — MRL
+══════════════════════════════════════ -->
+<div class="section active" id="section-mrl">
+
+  <div class="section-intro">
+    <div class="section-title">Matryoshka Representation Learning</div>
+    <div class="section-desc">
+      All voyage-4 models are trained with MRL: the first <em>d</em> dimensions of any embedding are already a valid
+      <em>d</em>-dimensional embedding. One embed call — store once at full 2048 dims — then truncate at serving
+      time with zero re-indexing cost. Three independent levers control quality, storage, and query cost.
+    </div>
+  </div>
+
+  <!-- Lever 1 -->
+  <div class="card">
+    <div class="card-label">Lever 1 — Shared Embedding Space</div>
+    <div class="card-title">Which model embeds your queries?</div>
+    <div class="model-grid">
+      <button class="model-btn" data-model="large" onclick="setModel('large')">
+        <span class="name">voyage-4-large</span><span class="sub">highest accuracy</span>
+      </button>
+      <button class="model-btn" data-model="base" onclick="setModel('base')">
+        <span class="name">voyage-4</span><span class="sub">balanced</span>
+      </button>
+      <button class="model-btn active" data-model="lite" onclick="setModel('lite')">
+        <span class="name">voyage-4-lite</span><span class="sub">fast queries</span>
+      </button>
+      <button class="model-btn" data-model="nano" onclick="setModel('nano')">
+        <span class="name">voyage-4-nano</span><span class="sub">local / free</span>
+      </button>
+    </div>
+    <div class="lever-note">
+      Documents indexed with voyage-4-large at full accuracy. All voyage-4 models share one embedding space —
+      any model can serve queries against the same index. Asymmetric indexing: pay large-model cost once at write time,
+      lite-model cost on every query.
+    </div>
+  </div>
+
+  <!-- Lever 2 -->
+  <div class="card">
+    <div class="card-label">Lever 2 — MRL Truncation</div>
+    <div class="card-title">How many dimensions do you keep?</div>
+    <div class="dim-grid">
+      <button class="dim-btn"        data-dim="2048" onclick="setDim(2048)">2048</button>
+      <button class="dim-btn"        data-dim="1024" onclick="setDim(1024)">1024</button>
+      <button class="dim-btn active" data-dim="512"  onclick="setDim(512)">512</button>
+      <button class="dim-btn"        data-dim="256"  onclick="setDim(256)">256</button>
+      <button class="dim-btn"        data-dim="128"  onclick="setDim(128)">128</button>
+      <button class="dim-btn"        data-dim="64"   onclick="setDim(64)">64</button>
+    </div>
+    <div class="lever-note">
+      Store at 2048 dims once; truncate at query time or set <code>output_dimension=N</code> at embed time.
+      Lower dims → smaller ANN index, faster search, lower memory footprint. Scores below are Recall@10
+      relative to the 2048-dim float32 baseline on MTEB/BEIR.
+    </div>
+  </div>
+
+  <!-- Lever 3 -->
+  <div class="card">
+    <div class="card-label">Lever 3 — Quantization</div>
+    <div class="card-title">What numeric precision for storage?</div>
+    <div class="quant-grid">
+      <button class="quant-btn" data-quant="fp32" onclick="setQuant('fp32')">
+        <span class="name">float32</span><span class="sub">4 bytes / dim</span>
+      </button>
+      <button class="quant-btn active" data-quant="int8" onclick="setQuant('int8')">
+        <span class="name">int8</span><span class="sub">1 byte / dim</span>
+      </button>
+      <button class="quant-btn" data-quant="binary" onclick="setQuant('binary')">
+        <span class="name">binary</span><span class="sub">1 bit / dim</span>
+      </button>
+    </div>
+    <div class="lever-note">
+      voyage-4 models are quantization-aware trained — int8 loses &lt;1% NDCG vs float32.
+      Binary (1 bit/dim) cuts storage 32× vs float32 but costs ~3–5% NDCG; pair with a re-rank pass for
+      production use.
+    </div>
+  </div>
+
+  <!-- Results panel -->
+  <div class="card" style="border-color: var(--color-border-secondary);">
+    <div class="card-label">Result — per 1 million vectors</div>
+
+    <div class="result-grid">
+      <div class="metric">
+        <div class="metric-label">Storage</div>
+        <div class="metric-val" id="r-storage">—</div>
+        <div class="metric-unit">GB</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">vs baseline</div>
+        <div class="metric-val" id="r-saving">—</div>
+        <div class="metric-unit">smaller</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Recall@10</div>
+        <div class="metric-val" id="r-quality">—</div>
+        <div class="metric-unit">% of max</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Query cost</div>
+        <div class="metric-val" id="r-cost">—</div>
+        <div class="metric-unit">rel. to large</div>
+      </div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-label">
+        <span>Storage vs 2048-dim float32 baseline</span>
+        <span id="bp-storage">—</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="bf-storage" style="width:50%"></div>
+      </div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-label">
+        <span>Retrieval quality retained (Recall@10)</span>
+        <span id="bp-quality">—</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="bf-quality" style="width:97%"></div>
+      </div>
+    </div>
+
+    <div class="insight" id="insight-text"></div>
+
+    <!-- Code snippet -->
+    <div class="code-block" id="code-snippet"></div>
+  </div>
+
+  <!-- MRL quality reference table -->
+  <div class="card">
+    <div class="card-label">MRL Quality Reference — all dim × quant combinations (current selection highlighted)</div>
+    <table class="qtable">
+      <thead>
+        <tr>
+          <th>Dims</th>
+          <th>Quant</th>
+          <th style="min-width:160px">Recall@10 vs baseline</th>
+          <th>Storage / 1M</th>
+          <th>Compression</th>
+        </tr>
+      </thead>
+      <tbody id="qtable-body"></tbody>
+    </table>
+  </div>
+
+</div><!-- /section-mrl -->
+
+
+<!-- ══════════════════════════════════════
+     TAB 2 — MoE
+══════════════════════════════════════ -->
+<div class="section" id="section-moe">
+
+  <div class="section-intro">
+    <div class="section-title">Mixture of Experts — voyage-4 Architecture</div>
+    <div class="section-desc">
+      voyage-4 uses a sparse MoE feed-forward layer: 8 specialist experts, 2 active per token selected by a
+      learned gating network. Only 25% of parameters execute per forward pass — the model achieves dense-quality
+      output at sparse-model compute cost. Expert specialisation also improves domain coverage vs a single dense
+      FFN of equivalent size.
+    </div>
+  </div>
+
+  <!-- Router simulation -->
+  <div class="card">
+    <div class="card-label">Router Simulation — gating network selection</div>
+    <div class="card-title">Select input type — see which 2 experts fire</div>
+
+    <div class="input-btns">
+      <button class="input-btn active" onclick="selectInput('legal')">Legal text</button>
+      <button class="input-btn"        onclick="selectInput('code')">Python code</button>
+      <button class="input-btn"        onclick="selectInput('multilingual')">French query</button>
+      <button class="input-btn"        onclick="selectInput('finance')">Financial doc</button>
+      <button class="input-btn"        onclick="selectInput('scientific')">Scientific abstract</button>
+      <button class="input-btn"        onclick="selectInput('general')">General text</button>
+    </div>
+
+    <div class="router-box">
+      <div class="router-label">Router (gating network)</div>
+      <div class="router-decision" id="router-text">—</div>
+      <div id="scores"></div>
+    </div>
+
+    <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px;">
+      Expert pool — 8 total, 2 active per token:
+    </div>
+    <div class="expert-grid" id="experts"></div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n">8</div><div class="stat-l">Total experts</div></div>
+      <div class="stat"><div class="stat-n" style="color:#1D9E75">2</div><div class="stat-l">Active / token</div></div>
+      <div class="stat"><div class="stat-n" style="color:#534AB7">25%</div><div class="stat-l">Compute used</div></div>
+    </div>
+
+    <div class="dense-note" id="dense-note"></div>
+  </div>
+
+  <!-- MoE vs Dense -->
+  <div class="card">
+    <div class="card-label">MoE vs Dense — system implications for architects</div>
+    <table class="dtable">
+      <thead>
+        <tr><th>Property</th><th>Dense model (same param count)</th><th>MoE — voyage-4</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Params activated / token</td>
+          <td>100%</td>
+          <td>25% &nbsp;<span class="tag tag-g">4× lower compute</span></td>
+        </tr>
+        <tr>
+          <td>Domain specialisation</td>
+          <td>Single shared FFN for all domains</td>
+          <td>Dedicated expert per domain — legal, code, multilingual, etc.</td>
+        </tr>
+        <tr>
+          <td>Memory at inference</td>
+          <td>All params active in GPU SRAM</td>
+          <td>All params loaded; only 2 experts computed per token</td>
+        </tr>
+        <tr>
+          <td>Throughput (same hardware)</td>
+          <td>Baseline</td>
+          <td>Higher — fewer FLOPS per token</td>
+        </tr>
+        <tr>
+          <td>Quality ceiling</td>
+          <td>Bounded by FFN capacity</td>
+          <td>Specialist experts raise ceiling for domain-specific inputs</td>
+        </tr>
+        <tr>
+          <td>Training complexity</td>
+          <td>Standard backprop</td>
+          <td>Load-balancing auxiliary loss required to prevent expert collapse</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- MoE + MRL together -->
+  <div class="card" style="border-color: var(--color-border-secondary);">
+    <div class="card-label">MoE × MRL — how they compose</div>
+    <div style="font-size:13px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:10px;">
+      MoE and MRL are orthogonal optimisations — they stack independently.
+    </div>
+    <table class="dtable">
+      <thead><tr><th>Axis</th><th>What it controls</th><th>Trade-off knob</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-g">MoE routing</span></td>
+          <td>Compute cost &amp; domain quality at <em>model inference time</em></td>
+          <td>Number of active experts (fixed at 2 in voyage-4)</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-p">MRL truncation</span></td>
+          <td>Storage cost &amp; ANN search speed at <em>index / retrieval time</em></td>
+          <td>Output dimension: 64 → 2048</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-o">Quantization</span></td>
+          <td>Vector storage footprint</td>
+          <td>fp32 → int8 → binary</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="font-size:12px;color:var(--color-text-tertiary);margin-top:8px;">
+      Choosing 512-dim int8 MRL doesn't change which MoE experts fire — MoE happens inside the encoder; MRL
+      happens to the output vector. They are independently tunable.
+    </div>
+  </div>
+
+</div><!-- /section-moe -->
+
+
+<!-- ══════════════════════════════════════
+     TAB 3 — DEPLOYMENT GUIDE
+══════════════════════════════════════ -->
+<div class="section" id="section-guide">
+
+  <div class="section-intro">
+    <div class="section-title">Deployment Decision Guide</div>
+    <div class="section-desc">
+      Three independent axes — model tier, embedding dimension, quantization — each chosen against a different
+      constraint. Mix and match freely; the shared embedding space means you can change any axis without re-indexing
+      the corpus.
+    </div>
+  </div>
+
+  <!-- Axis 1: model tier -->
+  <div class="card">
+    <div class="card-label">Axis 1 — Model tier · choose by query budget and latency SLA</div>
+    <table class="dtable">
+      <thead><tr><th>Model</th><th>Index with?</th><th>Query with?</th><th>Query cost</th><th>Native dims</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-g">voyage-4-large</span></td>
+          <td>✓ Recommended</td>
+          <td>High-recall offline batch only</td>
+          <td>1.0× baseline</td>
+          <td>2048</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-g">voyage-4</span></td>
+          <td>Viable</td>
+          <td>General-purpose production queries</td>
+          <td>0.33×</td>
+          <td>1024</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-g">voyage-4-lite</span></td>
+          <td>Cost-constrained only</td>
+          <td>High-QPS, latency-sensitive workloads</td>
+          <td>0.15×</td>
+          <td>512</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-g">voyage-4-nano</span></td>
+          <td>Edge / offline only</td>
+          <td>On-device, air-gapped, $0 cost</td>
+          <td>free</td>
+          <td>256</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="lever-note" style="margin-top:8px;">
+      Asymmetric pattern: index with voyage-4-large once, query with voyage-4-lite on every request.
+      Shared embedding space makes cross-model cosine similarity fully valid.
+    </div>
+  </div>
+
+  <!-- Axis 2: dims -->
+  <div class="card">
+    <div class="card-label">Axis 2 — MRL dimension · choose by storage budget and quality floor</div>
+    <table class="dtable">
+      <thead><tr><th>Dims</th><th>Recall@10 vs 2048 fp32</th><th>Storage / 1M (fp32)</th><th>Recommended for</th></tr></thead>
+      <tbody>
+        <tr><td>2048</td><td>100% — baseline</td><td>8.2 GB</td><td>Maximum precision; offline re-ranking corpus</td></tr>
+        <tr><td>1024</td><td>~99.1%</td><td>4.1 GB</td><td>Safe default; minimal quality delta</td></tr>
+        <tr><td>512</td> <td>~97.3%</td><td>2.0 GB</td><td>Production sweet spot for most search apps</td></tr>
+        <tr><td>256</td> <td>~94.0%</td><td>1.0 GB</td><td>Memory-constrained; edge inference</td></tr>
+        <tr><td>128</td> <td>~89.2%</td><td>512 MB</td><td>Tier-1 fast pre-filter; must re-rank top-K</td></tr>
+        <tr><td>64</td>  <td>~81.7%</td><td>256 MB</td><td>Approximate candidate generation only</td></tr>
+      </tbody>
+    </table>
+    <div class="lever-note" style="margin-top:8px;">
+      Store at full 2048 dims. Change dimension at query time or via <code>output_dimension</code> — no
+      re-indexing required.
+    </div>
+  </div>
+
+  <!-- Axis 3: quant -->
+  <div class="card">
+    <div class="card-label">Axis 3 — Quantization · choose by storage tolerance and accuracy floor</div>
+    <table class="dtable">
+      <thead><tr><th>Format</th><th>Bytes / dim</th><th>Storage / 1M at 512d</th><th>Quality impact</th><th>Pattern</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-o">float32</span></td>
+          <td>4</td><td>2.0 GB</td>
+          <td>Baseline — zero loss</td>
+          <td>Offline / exact-match workloads</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-o">int8</span></td>
+          <td>1</td><td>512 MB</td>
+          <td>&lt;1% NDCG loss — recommended default</td>
+          <td>Production ANN index (Atlas Vector Search, pgvector, Pinecone)</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-o">binary</span></td>
+          <td>0.125</td><td>64 MB</td>
+          <td>~3–5% NDCG loss</td>
+          <td>Candidate pre-filter; always re-rank top-K with fp32 or int8</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Combined configs -->
+  <div class="card" style="border-color: var(--color-border-secondary);">
+    <div class="card-label">Reference configurations — full system cost per 1M vectors</div>
+    <table class="dtable">
+      <thead><tr><th>Scenario</th><th>Index model</th><th>Query model</th><th>Dims</th><th>Quant</th><th>Storage</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Max precision</td>
+          <td>voyage-4-large</td><td>voyage-4-large</td>
+          <td>2048</td><td>fp32</td><td>8.2 GB</td><td>100%</td>
+        </tr>
+        <tr>
+          <td>Production default</td>
+          <td>voyage-4-large</td><td>voyage-4-lite</td>
+          <td>512</td><td>int8</td><td>512 MB</td><td>~96%</td>
+        </tr>
+        <tr>
+          <td>Cost-optimised</td>
+          <td>voyage-4</td><td>voyage-4-lite</td>
+          <td>256</td><td>int8</td><td>256 MB</td><td>~93%</td>
+        </tr>
+        <tr>
+          <td>Edge / on-device</td>
+          <td>voyage-4-nano</td><td>voyage-4-nano</td>
+          <td>128</td><td>binary</td><td>16 MB</td><td>~84%</td>
+        </tr>
+        <tr>
+          <td>Max compression</td>
+          <td>voyage-4-nano</td><td>voyage-4-nano</td>
+          <td>64</td><td>binary</td><td>8 MB</td><td>~76%</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="lever-note" style="margin-top:8px;">
+      Quality figures are Recall@10 relative to the max-precision configuration, averaged across MTEB/BEIR
+      retrieval tasks. Actual values depend on domain and corpus characteristics.
+    </div>
+  </div>
+
+</div><!-- /section-guide -->
+
+</div><!-- /content -->
+
+
+<script>
+// ── Tab navigation ─────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t) {
+    t.classList.toggle('active', t.getAttribute('onclick') === "showTab('" + name + "')");
+  });
+  document.querySelectorAll('.section').forEach(function(s) {
+    s.classList.toggle('active', s.id === 'section-' + name);
+  });
+}
+
+// ── MRL state ──────────────────────────────────────────────────────────────
+var mrlState = { model: 'lite', dim: 512, quant: 'int8' };
+
+var modelDefs = {
+  large: { label: 'voyage-4-large', costMult: 1.00 },
+  base:  { label: 'voyage-4',       costMult: 0.33 },
+  lite:  { label: 'voyage-4-lite',  costMult: 0.15 },
+  nano:  { label: 'voyage-4-nano',  costMult: 0.00 },
+};
+
+var bpd = { fp32: 4, int8: 1, binary: 0.125 };
+var BASELINE = 2048 * 4; // bytes
+
+// Recall@10 relative to 2048-dim float32 (MTEB/BEIR averages)
+var quality = {
+  2048: { fp32: 100.0, int8: 99.2, binary: 96.5 },
+  1024: { fp32:  99.1, int8: 98.4, binary: 95.8 },
+  512:  { fp32:  97.3, int8: 96.7, binary: 94.1 },
+  256:  { fp32:  94.0, int8: 93.4, binary: 90.8 },
+  128:  { fp32:  89.2, int8: 88.6, binary: 85.4 },
+  64:   { fp32:  81.7, int8: 81.1, binary: 78.3 },
+};
+
+function setModel(m) {
+  mrlState.model = m;
+  document.querySelectorAll('.model-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.model === m);
+  });
+  updateMRL();
+}
+
+function setDim(d) {
+  mrlState.dim = d;
+  document.querySelectorAll('.dim-btn').forEach(function(b) {
+    b.classList.toggle('active', parseInt(b.dataset.dim) === d);
+  });
+  updateMRL();
+}
+
+function setQuant(q) {
+  mrlState.quant = q;
+  document.querySelectorAll('.quant-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.quant === q);
+  });
+  updateMRL();
+}
+
+function updateMRL() {
+  var bytes    = mrlState.dim * bpd[mrlState.quant];
+  var gbPer1M  = (bytes * 1e6) / 1e9;
+  var compress = Math.round(BASELINE / bytes);
+  var pctStore = Math.round((bytes / BASELINE) * 100);
+  var qual     = quality[mrlState.dim][mrlState.quant];
+  var m        = modelDefs[mrlState.model];
+
+  // Metrics
+  document.getElementById('r-storage').textContent = gbPer1M.toFixed(2);
+  document.getElementById('r-saving').textContent  = compress + 'x';
+  document.getElementById('r-quality').textContent = qual.toFixed(1);
+  document.getElementById('r-cost').textContent    = m.costMult === 0 ? 'free' : (Math.round(m.costMult * 100) + '%');
+
+  // Storage bar
+  document.getElementById('bp-storage').textContent = pctStore + '%';
+  document.getElementById('bf-storage').style.width  = Math.max(pctStore, 2) + '%';
+  document.getElementById('bf-storage').style.background =
+    pctStore > 60 ? '#D85A30' : pctStore > 25 ? '#EF9F27' : '#1D9E75';
+
+  // Quality bar
+  document.getElementById('bp-quality').textContent = qual.toFixed(1) + '%';
+  document.getElementById('bf-quality').style.width  = qual + '%';
+  document.getElementById('bf-quality').style.background =
+    qual >= 95 ? '#1D9E75' : qual >= 88 ? '#EF9F27' : '#D85A30';
+
+  // Insight
+  var qNames = { fp32: 'float32 (full precision)', int8: 'int8 (4× smaller)', binary: 'binary (32× smaller)' };
+  var costStr = m.costMult === 0 ? 'free (open-weight)' : Math.round(m.costMult * 100) + '% of large-model cost';
+  document.getElementById('insight-text').innerHTML =
+    'Index with <b>voyage-4-large</b> at full accuracy. ' +
+    'Queries via <b>' + m.label + '</b> (' + costStr + '). ' +
+    'Vectors at <b>' + mrlState.dim + ' dims · ' + qNames[mrlState.quant] + '</b>. ' +
+    '<b>' + gbPer1M.toFixed(2) + ' GB</b> per 1M vectors — <b>' + compress + '×</b> smaller than the ' +
+    '2048-dim float32 baseline, retaining <b>' + qual.toFixed(1) + '%</b> of peak retrieval quality.';
+
+  // Code snippet
+  var dimArg = mrlState.dim < 2048 ? ', output_dimension=' + mrlState.dim : '';
+  document.getElementById('code-snippet').innerHTML =
+    '<span class="cm"># Embed documents (index time)</span>\n' +
+    'doc_embs = vo.<span class="fn">embed</span>(\n' +
+    '    chunks,\n' +
+    '    model=<span class="st">"voyage-4-large"</span>,\n' +
+    '    input_type=<span class="st">"document"</span>,\n' +
+    (mrlState.dim < 2048 ? '    output_dimension=<span class="hi">' + mrlState.dim + '</span>,\n' : '') +
+    ').embeddings\n\n' +
+    '<span class="cm"># Embed query (query time, ' + m.costMult * 100 + (m.costMult === 0 ? '% — open-weight' : '% cost of large') + ')</span>\n' +
+    'q_emb = vo.<span class="fn">embed</span>(\n' +
+    '    [query],\n' +
+    '    model=<span class="st">"' + m.label + '"</span>,\n' +
+    '    input_type=<span class="st">"query"</span>' + dimArg + ',\n' +
+    ').embeddings[0]';
+
+  // Rebuild quality table
+  buildQTable();
+}
+
+function buildQTable() {
+  var dims   = [2048, 1024, 512, 256, 128, 64];
+  var quants = ['fp32', 'int8', 'binary'];
+  var html   = '';
+  dims.forEach(function(d) {
+    quants.forEach(function(q) {
+      var bytes   = d * bpd[q];
+      var gb      = ((bytes * 1e6) / 1e9).toFixed(2);
+      var compress = Math.round(BASELINE / bytes);
+      var qual    = quality[d][q];
+      var active  = d === mrlState.dim && q === mrlState.quant;
+      var barColor = qual >= 95 ? '#1D9E75' : qual >= 88 ? '#EF9F27' : '#D85A30';
+
+      html += '<tr' + (active ? ' class="q-active"' : '') + '>' +
+        '<td>' + d + (active ? ' ◀' : '') + '</td>' +
+        '<td>' + q + '</td>' +
+        '<td><div class="q-bar-wrap">' +
+          '<div class="q-bar-track"><div class="q-bar-fill" style="width:' + qual + '%;background:' + barColor + '"></div></div>' +
+          '<span style="font-size:11px;color:var(--color-text-secondary)">' + qual.toFixed(1) + '%</span>' +
+        '</div></td>' +
+        '<td>' + gb + ' GB</td>' +
+        '<td>' + compress + '×</td>' +
+        '</tr>';
+    });
+  });
+  document.getElementById('qtable-body').innerHTML = html;
+}
+
+// ── MoE state ──────────────────────────────────────────────────────────────
+var expertDefs = [
+  { id: 0, name: 'Syntax & structure',   sub: 'grammar, parsing' },
+  { id: 1, name: 'Semantic similarity',  sub: 'meaning, context' },
+  { id: 2, name: 'Multilingual',         sub: 'cross-lingual transfer' },
+  { id: 3, name: 'Legal & contracts',    sub: 'clauses, precedent' },
+  { id: 4, name: 'Code & logic',         sub: 'functions, APIs' },
+  { id: 5, name: 'Domain concepts',      sub: 'specialised terms' },
+  { id: 6, name: 'Long context',         sub: 'document-level' },
+  { id: 7, name: 'Finance & numbers',    sub: 'metrics, ratios' },
+];
+
+var moeConfigs = {
+  legal:        {
+    active: [3, 5],
+    text:   'Legal text → experts 3 + 5 (Legal & contracts · Domain concepts)',
+    scores: [8, 22, 5, 95, 3, 88, 12, 4],
+    note:   'A dense model of the same parameter count runs all 8 experts. MoE activates only the legal specialist and domain concepts expert — equivalent output quality at 75% lower compute per token.'
+  },
+  code:         {
+    active: [4, 0],
+    text:   'Python code → experts 4 + 0 (Code & logic · Syntax & structure)',
+    scores: [82, 15, 3, 4, 97, 10, 8, 2],
+    note:   'Code tokens route to the logic expert and syntax expert. Multilingual and finance experts are dormant — irrelevant capacity is never invoked, keeping inference cost flat regardless of expert count.'
+  },
+  multilingual: {
+    active: [2, 1],
+    text:   'French query → experts 2 + 1 (Multilingual · Semantic similarity)',
+    scores: [10, 88, 94, 6, 3, 14, 20, 5],
+    note:   'A French sentence activates the cross-lingual transfer expert and the semantic similarity expert. Legal and finance specialists contribute nothing here and are skipped entirely by the router.'
+  },
+  finance:      {
+    active: [7, 5],
+    text:   'Financial doc → experts 7 + 5 (Finance & numbers · Domain concepts)',
+    scores: [5, 18, 7, 12, 4, 82, 10, 96],
+    note:   'Financial text routes to the numbers/ratios expert and domain concepts expert. Code and multilingual experts sit dormant — the gating network assigns them near-zero routing probability.'
+  },
+  scientific:   {
+    active: [5, 6],
+    text:   'Scientific abstract → experts 5 + 6 (Domain concepts · Long context)',
+    scores: [12, 30, 8, 10, 15, 91, 87, 18],
+    note:   'Scientific abstracts activate the domain concepts expert (technical vocabulary, field-specific terms) and the long-context expert (understanding document-level structure and abstract framing).'
+  },
+  general:      {
+    active: [1, 0],
+    text:   'General text → experts 1 + 0 (Semantic similarity · Syntax & structure)',
+    scores: [75, 92, 30, 15, 20, 25, 18, 10],
+    note:   'General text falls back to the two most universally applicable experts. Specialised domain experts (legal, code, finance) are skipped — the router learned to save their capacity for domain-specific inputs.'
+  },
+};
+
+var currentInput = 'legal';
+
+function selectInput(type) {
+  currentInput = type;
+  document.querySelectorAll('.input-btn').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('onclick') === "selectInput('" + type + "')");
+  });
+  renderMoE();
+}
+
+function renderMoE() {
+  var c = moeConfigs[currentInput];
+  document.getElementById('router-text').textContent = 'Routing: ' + c.text;
+
+  var scoresHTML = '';
+  expertDefs.forEach(function(e, i) {
+    var pct     = Math.round(c.scores[i]);
+    var isActive = c.active.indexOf(i) !== -1;
+    var color    = isActive ? '#1D9E75' : '#B4B2A9';
+    scoresHTML +=
+      '<div class="score-row">' +
+        '<span class="score-label">' + e.name + '</span>' +
+        '<div class="score-track"><div class="score-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
+        '<span class="score-pct">' + pct + '%</span>' +
+      '</div>';
+  });
+  document.getElementById('scores').innerHTML = scoresHTML;
+
+  var expHTML = '';
+  expertDefs.forEach(function(e) {
+    var isActive = c.active.indexOf(e.id) !== -1;
+    expHTML +=
+      '<div class="expert-box ' + (isActive ? 'e-active' : 'e-dormant') + '">' +
+        '<div class="expert-name">' + (isActive ? '● ' : '') + e.name + '</div>' +
+        '<div class="expert-sub">' + e.sub + '</div>' +
+      '</div>';
+  });
+  document.getElementById('experts').innerHTML = expHTML;
+  document.getElementById('dense-note').textContent = c.note;
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+updateMRL();
+renderMoE();
+</script>
+</body>
+</html>
